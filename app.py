@@ -5,7 +5,6 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-
 database_url = 'https://emtfsucnrfiuvcywkdqq.supabase.co/rest/v1'
 headers = {
     "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdGZzdWNucmZpdXZjeXdrZHFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODY4NTAyNzYsImV4cCI6MjAwMjQyNjI3Nn0.sQxAXBaNmYtfAPPKggSwy79LNKv_gEbVodzWTm7RzhY"
@@ -18,12 +17,12 @@ def getDestrezas():
         return jsonify({'message': 'Bad Request: JSON data required'}), 400
 
     try:
-        asignatura_subnivel = filters["ASIGNTURA/SUBNIVEL"]
+        asignaturasub = filters["asignaturasub"]
 
         response = requests.get(
-    f'{database_url}/DestrezasOne?select="DESTREZAS%20CON%20CRITERIO%20DE%20DESEMPE%C3%91O"&"ASIGNTURA%2FSUBNIVEL"=eq.{asignatura_subnivel}', 
-    headers=headers
-)
+            f'{database_url}/DestrezasOne?select="DESTREZAS%20CON%20CRITERIO%20DE%20DESEMPE%C3%91O"&asignaturasub=eq.{asignaturasub}', 
+            headers=headers
+        )
 
         if response.status_code != 200:
             print(f"Error response from database: {response.content}")
