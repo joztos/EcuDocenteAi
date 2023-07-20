@@ -1,9 +1,14 @@
+import json
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
 
 app = Flask(__name__)
 CORS(app)
+
+# Load the mapping at startup
+with open('mapeo.json', 'r') as f:
+    mapeo = json.load(f)
 
 database_url = 'https://emtfsucnrfiuvcywkdqq.supabase.co/rest/v1'
 headers = {
@@ -28,7 +33,8 @@ def getDestrezas():
             print(f"Error response from database: {response.content}")
             return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
 
-        destrezas = [row['DESTREZAS CON CRITERIO DE DESEMPEÑO'] for row in response.json()]
+        # Create a list of objects, each with an 'id' and a 'nombre'
+        destrezas = [{'id': row['id'], 'nombre': row['DESTREZAS CON CRITERIO DE DESEMPEÑO']} for row in response.json()]
         return jsonify({'destrezas': destrezas}), 200
     except KeyError:
         return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
@@ -44,18 +50,11 @@ def getIndicadores():
         return jsonify({'message': 'Bad Request: JSON data required'}), 400
 
     try:
-        criterio_de_evaluacioni = filters["criterio_de_evaluacioni"]
+        destreza_id = filters["destreza_id"]  # change "criterio_de_evaluacioni" to "destreza_id"
 
-        response = requests.get(
-            f'{database_url}/Indicadores?select=indicador&criterio_de_evaluacioni=eq.{criterio_de_evaluacioni}', 
-            headers=headers
-        )
+        # Look up the indicators in the mapping
+        indicadores = mapeo.get(str(destreza_id), [])  # ensure the id is in string format
 
-        if response.status_code != 200:
-            print(f"Error response from database: {response.content}")
-            return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
-
-        indicadores = [row['indicador'] for row in response.json()]
         return jsonify({'indicadores': indicadores}), 200
     except KeyError:
         return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
