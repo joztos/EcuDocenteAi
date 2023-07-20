@@ -1,0 +1,15 @@
+activar env 
+
+cd .\venv\Scripts
+.\Activate.ps1
+
+
+
+Para iniciar la aplicación React, navega a la carpeta client en la terminal y ejecuta 
+En la carpeta client 
+npm start
+
+
+y para el backend 
+python app.py
+
