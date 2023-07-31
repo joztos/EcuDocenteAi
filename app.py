@@ -8,7 +8,7 @@ import openai
 app = Flask(__name__)
 CORS(app)
 
-openai.api_key = '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'
+OPENAI_API_KEY = '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'
 
 # Load the mapping at startup
 with open('mapeo.json', 'r') as f:

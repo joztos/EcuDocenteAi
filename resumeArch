@@ -1,0 +1,35 @@
+import os
+import json
+
+def obtener_estructura_proyecto(root):
+    estructura_proyecto = {root: {}}
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        estructura_datos = dict()
+        estructura_datos["carpetas"] = dirnames
+        estructura_datos["archivos"] = filenames
+        path = dirpath.replace(root, "").split(os.sep)[1:]
+        sub_estructura = estructura_proyecto[root]
+        
+        for sub_path in path:
+            if sub_path not in sub_estructura.keys():
+                sub_estructura[sub_path] = {}
+            sub_estructura = sub_estructura[sub_path]
+
+        sub_estructura.update(estructura_datos)
+
+    return estructura_proyecto
+
+def escribir_a_archivo_json(estructura_proyecto, nombre_archivo):
+    with open(nombre_archivo, 'w', encoding='utf-8') as archivo:
+        json.dump(estructura_proyecto, archivo, ensure_ascii=False, indent=4)
+
+def main():
+    ruta = r'C:\Users\john\OneDrive\Escritorio\Codex\EcuDocenteAi'
+    nombre_archivo_salida = 'estructura_proyecto.json'  
+    estructura_proyecto = obtener_estructura_proyecto(ruta)
+    escribir_a_archivo_json(estructura_proyecto, nombre_archivo_salida)
+    print(f'La estructura del proyecto ha sido guardada en el archivo {nombre_archivo_salida}')
+
+if __name__ == '__main__':
+    main()
