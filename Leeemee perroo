@@ -4,6 +4,7 @@ cd .\venv\Scripts
 .\Activate.ps1
 
 
+cd ..//
 
 Para iniciar la aplicación React, navega a la carpeta client en la terminal y ejecuta 
 En la carpeta client 
