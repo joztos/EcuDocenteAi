@@ -14,7 +14,7 @@ with open('mapeo.json', 'r') as f:
 
 database_url = 'https://emtfsucnrfiuvcywkdqq.supabase.co/rest/v1'
 headers = {
-    "apikey": "YOUR_API_KEY_HERE"
+    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdGZzdWNucmZpdXZjeXdrZHFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODY4NTAyNzYsImV4cCI6MjAwMjQyNjI3Nn0.sQxAXBaNmYtfAPPKggSwy79LNKv_gEbVodzWTm7RzhY"
 }
 
 @app.route('/api/getDestrezas', methods=["POST"])
