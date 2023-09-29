@@ -1,6 +1,22 @@
 activar env 
 
 cd .\venv\Scripts
+
+
+
+Activa el entorno virtual:
+
+En PowerShell:
+powershell
+Copy code
+.\venv\Scripts\Activate
+En la línea de comandos (cmd):
+cmd
+Copy code
+.\venv\Scripts\activate
+
+
+
 .\Activate.ps1
 
 

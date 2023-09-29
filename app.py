@@ -1,54 +1,77 @@
-import json
-import os
-import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from supabase_py import create_client  # Importa solo create_client
 import openai
+import json
+import os  # Importa os para acceder a las variables de entorno
+from dotenv import load_dotenv  # Importa load_dotenv de python-dotenv
+
+load_dotenv()  # Carga las variables de entorno del archivo .env
+
+
 
 app = Flask(__name__)
 CORS(app)
 
-OPENAI_API_KEY = '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'
+# Usa las variables de entorno para las claves y URLs
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
-# Load the mapping at startup
+# Inicializa OpenAI
+openai.api_key = OPENAI_API_KEY
+
+# Crea el cliente Supabase
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)  # No necesitas especificar el tipo aquí
+
+
+
+# Carga el mapeo al inicio
 with open('mapeo.json', 'r') as f:
     mapeo = json.load(f)
 
-database_url = 'https://nvvcwnjblwivlgqfkkbq.supabase.co'
-headers = {
-    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52dmN3bmpibHdpdmxncWZra2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1NDI0NjYsImV4cCI6MjAwNzExODQ2Nn0.d-aYp0rG3Ni9LhguheL228DkyG55voDZ9kq_vABrs-E"
-}
 
-
-@app.route('/api/getDestrezas', methods=["POST"])
-def getDestrezas():
-    filters = request.get_json()
-    if not filters:
-        return jsonify({'message': 'Bad Request: JSON data required'}), 400
-
+@app.route('/api/getDestrezas', methods=['POST'])
+def get_destrezas():
     try:
-        asignatura = filters["asignatura"]
-
-        response = requests.get(
-            f'{database_url}/DestrezasOne?select=id,"DESTREZAS CON CRITERIO DE DESEMPEÑO"&asignatura=eq.{asignatura}', 
-            headers=headers
-        )
+        data = request.json
+        asignatura = data.get('asignatura')
         
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Content: {response.content}")
-
-        if response.status_code != 200:
-            print(f"Error response from database: {response.content}")
-            return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+        if not asignatura:
+            return jsonify({'error': 'Asignatura no proporcionada'}), 400
         
-        destrezas = [{"id": row['id'], "name": row['DESTREZAS CON CRITERIO DE DESEMPEÑO']} for row in response.json()]
-        return jsonify({'destrezas': destrezas}), 200
-    
-    except KeyError:
-        return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
-    except Exception as err:
-        print(err)
-        return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+        response = supabase.table('oficialecu').select('skill').eq('asignatura', asignatura).execute()
+        
+        print("Respuesta completa de Supabase:", response)  # Imprime la respuesta completa de Supabase
+        
+        if 'error' in response:  # Asegúrate de que 'error' es una clave en el diccionario
+            print("Error de Supabase:", response['error'])  # Accede a 'error' como clave del diccionario
+            return jsonify({'error': 'Error al obtener datos de Supabase'}), 500
+        
+        skills = [row['skill'] for row in response.get('data', [])]  # Usa get para acceder a 'data' en el diccionario
+        
+        return jsonify({'destrezas': skills}), 200
+        
+    except Exception as e:
+        print("Error General:", e)  # Imprime el error general
+        return jsonify({'error': 'Error interno del servidor'}), 500
+
+
+
+
+@app.route('/api/testSupabase', methods=['GET'])
+def test_supabase():
+    try:
+        response = supabase.table('oficialecu').select('*').limit(1).execute()
+        
+        if response.error:
+            return jsonify({'error': 'Error al obtener datos de Supabase', 'details': str(response.error)}), 500
+        
+        return jsonify({'data': response.data}), 200
+    except Exception as e:
+        return jsonify({'error': 'Error interno del servidor', 'details': str(e)}), 500
+
+
 
 
 
@@ -58,13 +81,13 @@ def getIndicadores():
     filters = request.get_json()
     if not filters:
         return jsonify({'message': 'Bad Request: JSON data required'}), 400
-
+    
     try:
         destreza_id = filters["destreza_id"]
-
-        # Look up the indicators in the mapping
+        
+        # Busca los indicadores en el mapeo
         indicadores = mapeo.get(str(destreza_id), [])
-
+        
         return jsonify({'indicadores': indicadores}), 200
     except KeyError:
         return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
@@ -77,23 +100,23 @@ def generateMicroPlan():
     data = request.get_json()
     destreza = data.get("destreza")
     indicador = data.get("indicador")
-
+    
     if not destreza or not indicador:
         return jsonify({'message': 'Error: destreza and indicador are required.'}), 400
-
+    
     message = f"Create a class microplan based on the following skills: {destreza}, and indicators: {indicador}."
-
+    
     try:
         response = openai.ChatCompletion.create(
-          model="gpt-3.5-turbo",
-          messages=[
+            model="gpt-3.5-turbo",
+            messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": message}
             ]
         )
         generatedPlan = response['choices'][0]['message']['content'].strip()
         return jsonify({'microplan': generatedPlan}), 200
-
+    
     except Exception as e:
         print(e)
         return jsonify({'message': 'Error generating microplan.'}), 500
