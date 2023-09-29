@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Usa las variables de entorno para las claves y URLs
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_API_KEY = os.getenv('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')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
@@ -56,20 +56,6 @@ def get_destrezas():
         print("Error General:", e)  # Imprime el error general
         return jsonify({'error': 'Error interno del servidor'}), 500
 
-
-
-
-@app.route('/api/testSupabase', methods=['GET'])
-def test_supabase():
-    try:
-        response = supabase.table('oficialecu').select('*').limit(1).execute()
-        
-        if response.error:
-            return jsonify({'error': 'Error al obtener datos de Supabase', 'details': str(response.error)}), 500
-        
-        return jsonify({'data': response.data}), 200
-    except Exception as e:
-        return jsonify({'error': 'Error interno del servidor', 'details': str(e)}), 500
 
 
 
