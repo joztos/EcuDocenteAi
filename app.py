@@ -1,17 +1,16 @@
 import json
-from flask import Flask, request, jsonify, make_response
+import os
+import requests
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from guidance.llms import OpenAI
-from llama_index.program import GuidancePydanticProgram
-from pydantic import BaseModel
-from typing import List
+import openai
 
-# Configuración
 app = Flask(__name__)
 CORS(app)
 
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = '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'
 
+# Load the mapping at startup
 with open('mapeo.json', 'r') as f:
     mapeo = json.load(f)
 
@@ -20,78 +19,76 @@ headers = {
     "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdGZzdWNucmZpdXZjeXdrZHFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODY4NTAyNzYsImV4cCI6MjAwMjQyNjI3Nn0.sQxAXBaNmYtfAPPKggSwy79LNKv_gEbVodzWTm7RzhY"
 }
 
-class EntradaPlaneacion(BaseModel):
-    destreza: str
-    indicador: str
-    metodologia: str
-    temporalidad: int  # Representa el número de lecciones pedagógicas a generar
+@app.route('/api/getDestrezas', methods=["POST"])
+def getDestrezas():
+    filters = request.get_json()
+    if not filters:
+        return jsonify({'message': 'Bad Request: JSON data required'}), 400
 
-class Actividad(BaseModel):
-    titulo: str
-    descripcion: str
-    duracion: int
-
-class Bloque(BaseModel):
-    nombre: str
-    actividades: List[Actividad]  # Cada bloque (lección pedagógica) contiene varias actividades
-
-class SalidaPlaneacion(BaseModel):
-    objetivo: str
-    bloques: List[Bloque]  # La cantidad de bloques es controlada por el valor de 'temporalidad'
-@app.route('/api/generateFullPlan', methods=["POST"])
-def generate_full_plan():
     try:
-        data = request.get_json()
-        entrada = EntradaPlaneacion(**data)
-        
-        # Formatear el prompt con valores específicos del usuario
-        prompt_template_str = f"""{{
-    "objetivo": "Generar un plan de clase con destreza: {{entrada.destreza}}, indicador: {{entrada.indicador}}, metodología: {{entrada.metodologia}} y temporalidad: {{entrada.temporalidad}}",
-    "plan": {{
-        "titulo": "# 📚 Plan de Clase:",
-        "objetivo_de_clase": {{
-            "encabezado": "## 🚀 Objetivo de Clase:",
-            "descripcion": "Proporcionar el objetivo a conseguir en relación con la destreza: '{{entrada.destreza}}' y el indicador: '{{entrada.indicador}}'."
-        }},
-        ...
-}}
-"""
+        asignaturasub = filters["asignaturasub"]
 
-                
-                "actividades": {{
-                    "encabezado": "## ✅ Actividades:",
-                    "detalle": [{{#geneach 'actividades' num_iterations={{{entrada.temporalidad}}}}}
-                        {{"minuto_a_minuto": "{{gen 'actividad'}}"}}
-                    {{/geneach}}]
-                }},
-                "evaluacion": {{
-                    "encabezado": "## ✅ Evaluación:",
-                    "preguntas": [{{#geneach 'evaluacion' num_iterations=5}}
-                        {{"pregunta": "{{gen 'pregunta'}}", "opciones": [{{#geneach 'opciones' num_iterations=4}}
-                            "{{gen 'opcion'}}"{{/geneach}}]
-                        ]}}
-                    {{/geneach}}]
-                }},
-                "dinamica": {{
-                    "encabezado": "## 🎨 Dinámica:",
-                    "propuesta": "{{gen 'dinamica'}}",
-                    "materiales": [{{#geneach 'materiales' num_iterations=3}}
-                        "{{gen 'material'}}"{{/geneach}}
-                    ]}
-                }}
-            }}
-        }}"""
-        
-        program = GuidancePydanticProgram(
-            output_cls=SalidaPlaneacion,
-            prompt_template_str=prompt_template_str,
-            guidance_llm=OpenAI("GPT-3.5"),
-            verbose=True,
+        response = requests.get(
+            f'{database_url}/DestrezasOne?select=id,"DESTREZAS CON CRITERIO DE DESEMPEÑO"&asignaturasub=eq.{asignaturasub}', 
+            headers=headers
         )
-        
-        salida = program()  # Generar salida basada en el modelo Pydantic
-        return jsonify(salida.dict()), 200
+
+        if response.status_code != 200:
+            print(f"Error response from database: {response.content}")
+            return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+
+        destrezas = [{"id": row['id'], "name": row['DESTREZAS CON CRITERIO DE DESEMPEÑO']} for row in response.json()]
+        return jsonify({'destrezas': destrezas}), 200
+    except KeyError:
+        return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
+    except Exception as err:
+        print(err)
+        return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+
+@app.route('/api/getIndicadores', methods=["POST"])
+def getIndicadores():
+    filters = request.get_json()
+    if not filters:
+        return jsonify({'message': 'Bad Request: JSON data required'}), 400
+
+    try:
+        destreza_id = filters["destreza_id"]
+
+        # Look up the indicators in the mapping
+        indicadores = mapeo.get(str(destreza_id), [])
+
+        return jsonify({'indicadores': indicadores}), 200
+    except KeyError:
+        return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
+    except Exception as err:
+        print(err)
+        return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+
+@app.route('/api/generateMicroPlan', methods=["POST"])
+def generateMicroPlan():
+    data = request.get_json()
+    destreza = data.get("destreza")
+    indicador = data.get("indicador")
+
+    if not destreza or not indicador:
+        return jsonify({'message': 'Error: destreza and indicador are required.'}), 400
+
+    message = f"Create a class microplan based on the following skills: {destreza}, and indicators: {indicador}."
+
+    try:
+        response = openai.ChatCompletion.create(
+          model="gpt-3.5-turbo",
+          messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": message}
+            ]
+        )
+        generatedPlan = response['choices'][0]['message']['content'].strip()
+        return jsonify({'microplan': generatedPlan}), 200
 
     except Exception as e:
         print(e)
-        return jsonify({'message': 'Error generating plan.'}), 500
+        return jsonify({'message': 'Error generating microplan.'}), 500
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000, debug=True)
