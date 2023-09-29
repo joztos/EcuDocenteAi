@@ -14,10 +14,11 @@ OPENAI_API_KEY = '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'
 with open('mapeo.json', 'r') as f:
     mapeo = json.load(f)
 
-database_url = 'https://emtfsucnrfiuvcywkdqq.supabase.co/rest/v1'
+database_url = 'https://nvvcwnjblwivlgqfkkbq.supabase.co'
 headers = {
-    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdGZzdWNucmZpdXZjeXdrZHFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODY4NTAyNzYsImV4cCI6MjAwMjQyNjI3Nn0.sQxAXBaNmYtfAPPKggSwy79LNKv_gEbVodzWTm7RzhY"
+    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52dmN3bmpibHdpdmxncWZra2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1NDI0NjYsImV4cCI6MjAwNzExODQ2Nn0.d-aYp0rG3Ni9LhguheL228DkyG55voDZ9kq_vABrs-E"
 }
+
 
 @app.route('/api/getDestrezas', methods=["POST"])
 def getDestrezas():
@@ -26,24 +27,31 @@ def getDestrezas():
         return jsonify({'message': 'Bad Request: JSON data required'}), 400
 
     try:
-        asignaturasub = filters["asignaturasub"]
+        asignatura = filters["asignatura"]
 
         response = requests.get(
-            f'{database_url}/DestrezasOne?select=id,"DESTREZAS CON CRITERIO DE DESEMPEÑO"&asignaturasub=eq.{asignaturasub}', 
+            f'{database_url}/DestrezasOne?select=id,"DESTREZAS CON CRITERIO DE DESEMPEÑO"&asignatura=eq.{asignatura}', 
             headers=headers
         )
+        
+        print(f"Response Status Code: {response.status_code}")
+        print(f"Response Content: {response.content}")
 
         if response.status_code != 200:
             print(f"Error response from database: {response.content}")
             return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
-
+        
         destrezas = [{"id": row['id'], "name": row['DESTREZAS CON CRITERIO DE DESEMPEÑO']} for row in response.json()]
         return jsonify({'destrezas': destrezas}), 200
+    
     except KeyError:
         return jsonify({'message': "Error: Falta uno o más detalles requeridos en los filtros."}), 400
     except Exception as err:
         print(err)
         return jsonify({'message': 'Error en la consulta a la base de datos'}), 500
+
+
+
 
 @app.route('/api/getIndicadores', methods=["POST"])
 def getIndicadores():
