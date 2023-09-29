@@ -1,33 +1,23 @@
-activar env 
 
 cd .\venv\Scripts
+.\Activate
 
 
 
-Activa el entorno virtual:
 
-En PowerShell:
-powershell
-Copy code
-.\venv\Scripts\Activate
-En la línea de comandos (cmd):
-cmd
-Copy code
 .\venv\Scripts\activate
 
 
 
-.\Activate.ps1
 
 
 cd ..//
 
-Para iniciar la aplicación React, navega a la carpeta client en la terminal y ejecuta 
 
-En la carpeta client 
+
 npm start
 
 
-y para el backend 
+
 python app.py
 

@@ -31,7 +31,7 @@ with open('mapeo.json', 'r') as f:
     mapeo = json.load(f)
 
 
-@app.route('/api/getDestrezas', methods=['POST'])
+@app.route('/api/getskills', methods=['POST'])
 def get_destrezas():
     try:
         data = request.json
