@@ -1,23 +1,20 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from supabase_py import create_client
-import openai
+import guidance
 import json
 
 app = Flask(__name__)
 CORS(app)
 
 # Configura y verifica el resto de las variables de entorno y servicios
-
-SUPABASE_URL="https://nvvcwnjblwivlgqfkkbq.supabase.co"
-SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52dmN3bmpibHdpdmxncWZra2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1NDI0NjYsImV4cCI6MjAwNzExODQ2Nn0.d-aYp0rG3Ni9LhguheL228DkyG55voDZ9kq_vABrs-E"
-
-
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Supabase URL or Key not provided.")
+SUPABASE_URL = "https://nvvcwnjblwivlgqfkkbq.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52dmN3bmpibHdpdmxncWZra2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1NDI0NjYsImV4cCI6MjAwNzExODQ2Nn0.d-aYp0rG3Ni9LhguheL228DkyG55voDZ9kq_vABrs-E"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)  # Inicializa el cliente Supabase
+
+# Configura el modelo de lenguaje para ejecutar programas de guidance
+guidance.llm = guidance.llms.OpenAI(api_key="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")
 
 # Carga el mapeo al inicio
 with open('mapeo.json', 'r') as f:
@@ -44,18 +41,6 @@ def get_destrezas():
     except Exception as e:
         return jsonify({'error': 'Error interno del servidor'}), 500
 
-@app.route('/api/testSupabase', methods=['GET'])
-def test_supabase():
-    try:
-        response = supabase.table('oficialecu').select('*').limit(1).execute()
-        
-        if response.error:
-            return jsonify({'error': 'Error al obtener datos de Supabase', 'details': str(response.error)}), 500
-        
-        return jsonify({'data': response.data}), 200
-    except Exception as e:
-        return jsonify({'error': 'Error interno del servidor', 'details': str(e)}), 500
-
 @app.route('/api/getIndicadores', methods=["POST"])
 def getIndicadores():
     filters = request.get_json()
@@ -80,24 +65,17 @@ def generateMicroPlan():
 
         if not destreza or not indicador:
             return jsonify({'message': 'Error: destreza and indicador are required.'}), 400
-        
-        message = f"Create a class microplan based on the following skills: {destreza}, and indicators: {indicador}."
-        
-        # Hardcodear la clave API
-        openai.api_key = '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'
-        
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": message}
-            ]
+
+        # Define el programa de guidance
+        program = guidance(
+            """Create a class microplan based on the following skills: {{destreza}}, and indicators: {{indicador}}."""
         )
-        generatedPlan = response['choices'][0]['message']['content'].strip()
+
+        # Ejecuta el programa de guidance con los parámetros adecuados
+        result = program(destreza=destreza, indicador=indicador)
+        generatedPlan = result.strip()
+
         return jsonify({'microplan': generatedPlan}), 200
-    
-    except openai.error.OpenAIError as e:
-        return jsonify({'message': 'Error interacting with OpenAI API.'}), 500
     
     except Exception as e:
         return jsonify({'message': 'Unexpected internal server error.'}), 500
