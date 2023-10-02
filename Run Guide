@@ -9,6 +9,16 @@ cd .\venv\Scripts
 
 
 
+Este comando eliminará el directorio venv y todos sus contenidos. 
+Remove-Item -Recurse -Force venv
+
+
+Crear un nuevo entorno virtual:
+
+python -m venv venv
+
+Activar el nuevo entorno virtual:
+.\venv\Scripts\activate
 
 
 cd ..//
