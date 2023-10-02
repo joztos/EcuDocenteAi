@@ -18,7 +18,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)  # Inicializa el cliente Su
 
 # Configura el modelo de lenguaje para ejecutar programas de guidance, # set the default language model that execute guidance programs
 
-guidance.llm = guidance.llms.OpenAI("text-davinci-003", api_key="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")
+guidance.llm = guidance.llms.OpenAI(model="text-davinci-003", api_key="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")
+
+
 
 # Carga el mapeo al inicio
 with open('mapeo.json', 'r') as f:
@@ -66,7 +68,6 @@ def getIndicadores():
 
 @app.route('/api/generateMicroPlan', methods=["POST", "OPTIONS"])
 @cross_origin()  # Usa el decorador @cross_origin() para permitir el acceso
-
 def generateMicroPlan():
     
     if request.method == "OPTIONS":  # Si el método de la solicitud es OPTIONS
@@ -96,8 +97,12 @@ def generateMicroPlan():
         ''')
 
         guidance_result = program(destreza=destreza, indicador=indicador)
-        return jsonify({'generated_plan': guidance_result}), 200
-            # Retorna el resultado
+        
+        # Convertir el resultado de guidance a un diccionario Python, excluyendo objetos no serializables
+        result_dict = {k: v for k, v in guidance_result.variables().items() if k != "llm"}
+        
+        # Devolver el diccionario como un objeto JSON
+        return jsonify({'generated_plan': result_dict}), 200
 
     except Exception as e:
         app.logger.error(traceback.format_exc())
