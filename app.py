@@ -77,32 +77,43 @@ def generateMicroPlan():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'  # Permite encabezados de Content-Type
         return response  # Retorna la respuesta configurada
     
-    try:
+     try:
         if request.content_type != 'application/json':
             return jsonify({'error': 'Content-Type must be application/json'}), 415
 
         data = request.json
         destreza = data.get('destreza', '').strip()
         indicador = data.get('indicador', '').strip()
+        metodologia = data.get('metodologia', '').strip()
+        temporalidad = data.get('temporalidad', '').strip()  # Cambiado a string
 
-        if not destreza or not indicador:
-            return jsonify({'error': 'Destreza e indicador son requeridos y no pueden estar vacíos'}), 400
+        if not destreza or not indicador or not metodologia or not temporalidad:
+            return jsonify({'error': 'Todos los campos son requeridos y no pueden estar vacíos'}), 400
 
-        program = guidance('''
-        # Plan de Clase para la destreza: {{destreza}} y el indicador: {{indicador}}
-        ## 🚀 Objetivo de Clase: "{{gen 'objetivo' max_tokens=50}}"
-        ## ✅ Actividades: "{{gen 'actividades' max_tokens=500}}"
-        ## ✅ Evaluación: "{{gen 'evaluacion' max_tokens=300}}"
-        ## 🎨 Dinámica: "{{gen 'dinamica' max_tokens=400}}"
-        ''')
+        plans = []
+        num_blocks = 0
 
-        guidance_result = program(destreza=destreza, indicador=indicador)
-        
-        # Convertir el resultado de guidance a un diccionario Python, excluyendo objetos no serializables
-        result_dict = {k: v for k, v in guidance_result.variables().items() if k != "llm"}
-        
-        # Devolver el diccionario como un objeto JSON
-        return jsonify({'generated_plan': result_dict}), 200
+        if temporalidad == "dia":
+            num_blocks = 1
+        elif temporalidad == "semana":
+            num_blocks = 5
+        # ... (añade condiciones para otros valores de temporalidad)
+
+        for i in range(num_blocks):
+            day_or_block = f"Día {i+1}" if temporalidad == "semana" else ""
+            program = guidance(f'''
+            # Plan de Clase {day_or_block} para la destreza: {{destreza}}, el indicador: {{indicador}}, y la metodología: {metodologia}
+            ## 🚀 Objetivo de Clase: "{{gen 'objetivo' max_tokens=50}}"
+            ## ✅ Actividades: "{{gen 'actividades' max_tokens=500}}"
+            ## ✅ Evaluación: "{{gen 'evaluacion' max_tokens=300}}"
+            ## 🎨 Dinámica: "{{gen 'dinamica' max_tokens=400}}"
+            ''')
+
+            guidance_result = program(destreza=destreza, indicador=indicador)
+            result_dict = {k: v for k, v in guidance_result.variables().items() if k != "llm"}
+            plans.append(result_dict)
+
+        return jsonify({'generated_plans': plans}), 200
 
     except Exception as e:
         app.logger.error(traceback.format_exc())
