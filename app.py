@@ -7,11 +7,14 @@ import json
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
-
 # Configuración de Supabase y Guidance
 SUPABASE_URL = "https://nvvcwnjblwivlgqfkkbq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52dmN3bmpibHdpdmxncWZra2JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1NDI0NjYsImV4cCI6MjAwNzExODQ2Nn0.d-aYp0rG3Ni9LhguheL228DkyG55voDZ9kq_vABrs-E"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)  # Inicializa el cliente Supabase
+
+# Configura el modelo de lenguaje para ejecutar programas de guidance, # set the default language model that execute guidance programs
+
 guidance.llm = guidance.llms.OpenAI(model="text-davinci-003", api_key="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")
 
 
@@ -80,29 +83,24 @@ def generateMicroPlan():
 
         plans = []
         num_blocks = 1 if temporalidad == "dia" else 5
-
         for i in range(num_blocks):
             day_or_block = f"Día {i+1}" if temporalidad == "semana" else ""
             program = guidance(f'''
-             Plan de Clase {day_or_block} para la destreza: {{destreza}}, el indicador: {{indicador}}, y la metodología: {metodologia}
-             🚀 Objetivo de Clase: "{{gen 'objetivo' max_tokens=80}}"
-             ✅ Actividades: "{{gen 'actividades' max_tokens=500}}"
-             ✅ Evaluación: "{{gen 'evaluacion' max_tokens=300}}"
-             🎨 Dinámica: "{{gen 'dinamica' max_tokens=400}}"
+            Plan de Clase {day_or_block} para la destreza: {{destreza}}, el indicador: {{indicador}}, y la metodología: {metodologia}
+            🚀 Objetivo de Clase: "{{gen 'objetivo' max_tokens=80}}"
+            ✅ Actividades: "{{gen 'actividades' max_tokens=500}}"
+            ✅ Evaluación: "{{gen 'evaluacion' max_tokens=300}}"
+            🎨 Dinámica: "{{gen 'dinamica' max_tokens=400}}"
             ''')
 
             guidance_result = program(destreza=destreza, indicador=indicador, metodologia=metodologia, temporalidad=temporalidad)
-            result_dict = {k: v for k, v in guidance_result.variables().items() if k != "@raw_prefix"}
+            result_dict = {k: v for k, v in guidance_result.variables().items() if k != "llm"}
             plans.append(result_dict)
 
         return jsonify({'generated_plans': plans}), 200
 
     except Exception as e:
         return jsonify({'error': 'Error interno del servidor'}), 500
-
-
-
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
