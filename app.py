@@ -54,23 +54,24 @@ def generateMicroPlan():
         duracion_sesiones = data.get('duracion_sesiones', '').strip()
 
         if not texto_libre or not metodologia or not grado or not edad or not num_sesiones or not duracion_sesiones:
-            return jsonify({'error': 'Texto libre, metodologia, grado, edad, número de sesiones y duración de sesiones son requeridos y no pueden estar vacíos'}), 400
+            return jsonify({'error': 'Todos los campos son requeridos y no pueden estar vacíos'}), 400
 
         sesiones_etapas = divide_etapas(metodologia, num_sesiones)
         session_objectives = []
+
         for etapas in sesiones_etapas:
             program_objetivo = guidance('''
-            Eres un asistente que genera un objetivo de clase para cada sesión del plan de estudios para estudiantes de {{grado}} con edad de {{edad}} años, utilizando la metodología {{metodologia}} y basándose en el tema {{texto_libre}}. Crea un objetivo que integre estos elementos de forma natural.
+            Genera un objetivo de clase para cada sesión del plan de estudios centrado en el tema {{texto_libre}} para estudiantes de {{grado}} con edad de {{edad}} años, tomando en cuenta las etapas {{etapas}}.
             Objetivo de Clase: 
             "{{gen 'objetivo' max_tokens=200}}"
             ''')
-            guidance_objetivo = program_objetivo(texto_libre=texto_libre, metodologia=metodologia, grado=grado, edad=edad)
+            guidance_objetivo = program_objetivo(texto_libre=texto_libre, grado=grado, edad=edad, etapas=', '.join(etapas))
             session_objectives.append(guidance_objetivo.variables()["objetivo"])
 
         guidance_results = []
         for i, (objetivo, etapas) in enumerate(zip(session_objectives, sesiones_etapas)):
             program_content = guidance('''
-            Eres un asistente que genera planes de estudio y preguntas de evaluación basados en el objetivo: {{objetivo}} y el tema {{texto_libre}} para estudiantes de {{grado}} con edad de {{edad}} años, utilizando una metodología de {{metodologia}}.
+            Genera planes de estudio y preguntas de evaluación basados en el objetivo: {{objetivo}} y el tema {{texto_libre}} para estudiantes de {{grado}} con edad de {{edad}} años, considerando las etapas {{etapas}}.
             Sesión {{session_number}} de {{duracion_sesiones}}:
             Actividades: 
             {{#geneach 'actividades' num_iterations=5}}
@@ -81,7 +82,7 @@ def generateMicroPlan():
             Dinámica:
             {{gen 'dinamica' max_tokens=200}}
             ''')
-            guidance_result = program_content(objetivo=objetivo, texto_libre=texto_libre, metodologia=metodologia, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones)
+            guidance_result = program_content(objetivo=objetivo, texto_libre=texto_libre, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones, etapas=', '.join(etapas))
             guidance_results.append(guidance_result.variables())
 
         result_dict = {"session_{}".format(i+1): guidance_results[i] for i in range(num_sesiones)}
