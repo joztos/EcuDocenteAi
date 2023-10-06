@@ -57,31 +57,32 @@ def generateMicroPlan():
             return jsonify({'error': 'Texto libre, metodologia, grado, edad, número de sesiones y duración de sesiones son requeridos y no pueden estar vacíos'}), 400
 
         sesiones_etapas = divide_etapas(metodologia, num_sesiones)
-        guidance_results = []
-
-        for i, etapas in enumerate(sesiones_etapas):
-            program = guidance('''
-Eres un asistente que genera planes de estudio y preguntas de evaluación para estudiantes de {{grado}} con edad de {{edad}} años, utilizando una metodología de {{metodologia}} y enfocándote en las etapas {{etapas}}.
-Plan de estudio basado en: {{texto_libre}}
-Objetivo de Clase: 
-"{{gen 'objetivo' max_tokens=50}}"
-Sesión {{session_number}} de {{duracion_sesiones}}:
-Actividades: 
-{{#geneach 'actividades' num_iterations=5}}
-- {{gen 'this' max_tokens=90}}{{/geneach}}
-Preguntas de Evaluación: 
-{{#geneach 'preguntas_evaluacion' num_iterations=3}}
-{{@index+1}}. {{gen 'this' max_tokens=100}}{{/geneach}}
-Dinámica:
-{{gen 'dinamica' max_tokens=100}}
+        session_objectives = []
+        for etapas in sesiones_etapas:
+            program_objetivo = guidance('''
+            Eres un asistente que genera objetivos de clase. Basándote en el tema {{texto_libre}}, para estudiantes de {{grado}} con {{edad}} años y utilizando la metodología {{metodologia}}, crea un objetivo conciso sin repetir estos detalles.
+            Objetivo de Clase: 
+            "{{gen 'objetivo' max_tokens=200}}"
             ''')
-            guidance_result = program(texto_libre=texto_libre, metodologia=metodologia, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones, etapas=', '.join(etapas))
-            guidance_results.append(guidance_result.variables())
+            guidance_objetivo = program_objetivo(texto_libre=texto_libre, metodologia=metodologia, grado=grado, edad=edad, etapas=', '.join(etapas))
+            session_objectives.append(guidance_objetivo.variables()["objetivo"])
 
-            # Bloque de diagnóstico de variables
-            variables = guidance_result.variables()
-            for key, value in variables.items():
-                print(f"Key: {key}, Type: {type(value)}")
+        guidance_results = []
+        for i, (objetivo, etapas) in enumerate(zip(session_objectives, sesiones_etapas)):
+            program_content = guidance('''
+            Eres un asistente que genera planes de estudio y preguntas de evaluación basados en el objetivo: {{objetivo}} y el tema {{texto_libre}} para estudiantes de {{grado}} con edad de {{edad}} años, utilizando una metodología de {{metodologia}} y enfocándote en las etapas {{etapas}}.
+            Sesión {{session_number}} de {{duracion_sesiones}}:
+            Actividades: 
+            {{#geneach 'actividades' num_iterations=5}}
+            - {{gen 'this' max_tokens=120}}{{/geneach}}
+            Preguntas de Evaluación: 
+            {{#geneach 'preguntas_evaluacion' num_iterations=3}}
+            {{@index+1}}. {{gen 'this' max_tokens=120}}{{/geneach}}
+            Dinámica:
+            {{gen 'dinamica' max_tokens=200}}
+            ''')
+            guidance_result = program_content(objetivo=objetivo, texto_libre=texto_libre, metodologia=metodologia, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones, etapas=', '.join(etapas))
+            guidance_results.append(guidance_result.variables())
 
         result_dict = {"session_{}".format(i+1): guidance_results[i] for i in range(num_sesiones)}
         result_dict = filter_unserializable(result_dict)
