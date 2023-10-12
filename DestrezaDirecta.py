@@ -61,7 +61,7 @@ def filter_unserializable(data):
 
 @app.route('/api/generateMicroPlan', methods=["POST", "OPTIONS"])
 @cross_origin()
-@token_required
+#@token_required  # <-- Esta línea ha sido comentada
 def generateMicroPlan():
     if request.method == "OPTIONS":
         response = make_response()
