@@ -33,26 +33,27 @@ def generateMicroPlan():
             return jsonify({'error': 'Content-Type must be application/json'}), 415
 
         data = request.json
-        tema = data.get('tema', '').strip()
+        destreza = data.get('destreza', '').strip()
+        indicador = data.get('indicador', '').strip()
         metodologia = data.get('metodologia', '').strip().upper()
-        num_sesiones = data.get('num_sesiones', 0)
+        num_sesiones = int(data.get('num_sesiones', 0))
         duracion_sesiones = data.get('duracion_sesiones', '').strip()
         grado = data.get('grado', '').strip()
         edad = data.get('edad', '').strip()
 
-        if not tema or not metodologia or not num_sesiones or not duracion_sesiones or not grado or not edad:
+        if not destreza or not indicador or not metodologia or not num_sesiones or not duracion_sesiones or not grado or not edad:
             return jsonify({'error': 'Todos los campos son requeridos y no pueden estar vacíos'}), 400
 
         guidance_results = []
         for i in range(num_sesiones):
             program_objetivo = guidance('''
-            Genera un objetivo de clase centrado en el tema {{tema}} para estudiantes de {{grado}} con edad de {{edad}} años utilizando la metodología {{metodologia}}.
+            Genera un objetivo de clase centrado en la destreza {{destreza}} y el indicador {{indicador}} para estudiantes de {{grado}} con edad de {{edad}} años utilizando la metodología {{metodologia}}.
             Objetivo de Clase: "{{gen 'objetivo' max_tokens=300}}"
             ''')
-            guidance_objetivo = program_objetivo(tema=tema, grado=grado, edad=edad, metodologia=metodologia).variables()["objetivo"]
+            guidance_objetivo = program_objetivo(destreza=destreza, indicador=indicador, grado=grado, edad=edad, metodologia=metodologia).variables()["objetivo"]
 
             program_content = guidance('''
-            Basado en el objetivo: {{objetivo}} y el tema {{tema}} para estudiantes de {{grado}} con edad de {{edad}} años, considerando la metodología {{metodologia}}.
+            Basado en el objetivo: {{objetivo}}, la destreza {{destreza}} y el indicador {{indicador}} para estudiantes de {{grado}} con edad de {{edad}} años, considerando la metodología {{metodologia}}.
             Sesión {{session_number}} de {{duracion_sesiones}}:
             Actividades: 
             {{#geneach 'actividades' num_iterations=3}}
@@ -62,7 +63,7 @@ def generateMicroPlan():
             {{@index+1}}. {{gen 'this' max_tokens=200}}{{/geneach}}
             Dinámica: {{gen 'dinamica' max_tokens=300}}
             ''')
-            guidance_result = program_content(objetivo=guidance_objetivo, tema=tema, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones, metodologia=metodologia)
+            guidance_result = program_content(objetivo=guidance_objetivo, destreza=destreza, indicador=indicador, grado=grado, edad=edad, session_number=i+1, duracion_sesiones=duracion_sesiones, metodologia=metodologia)
             guidance_results.append(guidance_result.variables())
 
         result_dict = {"session_{}".format(i+1): guidance_results[i] for i in range(num_sesiones)}
