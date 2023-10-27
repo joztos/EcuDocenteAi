@@ -4,9 +4,7 @@ import traceback
 import guidance
 import json
 import os
-import dotenv
 from dotenv import load_dotenv
-load_dotenv()
 from functools import wraps
 import jwt
 
@@ -21,7 +19,9 @@ guidance.llm = guidance.llms.OpenAI(model="text-davinci-003", api_key=openai_api
 
 METODOLOGIAS = {
     'BLOOM': ['Conocimiento', 'Comprensión', 'Aplicación', 'Análisis', 'Síntesis', 'Evaluación'],
-    'ERCA': ['Experiencia', 'Reflexión', 'Conceptualización', 'Aplicación']
+    'ERCA': ['Experiencia', 'Reflexión', 'Conceptualización', 'Aplicación'],
+    'MONTESSORI': ['EnfoqueMontessori'],
+    'NEURO-EDUCACION': ['EnfoqueNeuroeducativo']
 }
 
 # Decorador para validar JWT
@@ -44,6 +44,10 @@ def token_required(f):
 def divide_etapas(metodologia, num_sesiones):
     etapas = METODOLOGIAS[metodologia]
     sesiones = []
+    
+    if metodologia in ['MONTESSORI', 'NEURO-EDUCACION']:
+        return [[etapas[0]] for _ in range(num_sesiones)]
+    
     etapas_por_sesion = len(etapas) // num_sesiones
     extra_etapas = len(etapas) % num_sesiones
 
@@ -61,7 +65,7 @@ def filter_unserializable(data):
 
 @app.route('/api/generateMicroPlan', methods=["POST", "OPTIONS"])
 @cross_origin()
-#@token_required  # <-- Esta línea ha sido comentada
+#@token_required
 def generateMicroPlan():
     if request.method == "OPTIONS":
         response = make_response()
